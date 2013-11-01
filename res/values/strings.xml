@@ -7,9 +7,9 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <!-- Application name. "Smart Extras" is trademarked. It should not be translated. Smart Extras is written as two words, capital S, capital E. Use ™ in every instance. 8 Game is a number/image game of moving tiles. The name should be translated.
  -->
-    <string name="app_name" xliff:restype="x-AEF-NOBOX">Keybd</string>
+    <string name="app_name" xliff:restype="x-AEF-NOBOX">KeybdExt</string>
     <!-- Name of extension (number/image game of moving tiles), shown on SmartWatch. The name should be translated. -->
-    <string name="extension_name" xliff:restype="x-ANDROID/LIST/SETTINGS/LARGE/CHECKBOX">Keybd</string>
+    <string name="extension_name" xliff:restype="x-ANDROID/LIST/SETTINGS/LARGE/CHECKBOX">KeybdExt</string>
     <!-- Title of preference activity, shown in preferences on phone -->
     <string name="preference_activity_title" xliff:restype="x-GENERIC/HEADERTITLE/SMALL/V">Keybd settings</string>
     <!-- Title in popup dialog when sharing result via another Android application, i.e., Facebook -->
@@ -23,10 +23,10 @@
     <!-- Text displayed on the SmartWatch when a game of 8 Game is finished, together with the number of moves in that game. -->
     <string name="game_finished_moves_text" xliff:restype="x-AEF-TEXT/CONTROL/1ROW/BOLD">Moves</string>
 
-    <string name="preference_activity_title">Smart Keybd settings</string>
+    <string name="preference_activity_title">Keybd settings</string>
    
     <!-- Configuration title shown in preferences -->
-    <string name="configuration_text">Sample keybd settings</string>
+    <string name="configuration_text">keybd settings</string>
     <!-- Menu option shown in preferences -->
     <string name="preference_option_read_me">READ ME</string>
     <!-- Read me text shown in dialog -->
