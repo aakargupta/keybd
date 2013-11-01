@@ -30,6 +30,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.inputmethodservice.Keyboard.Key;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.text.TextPaint;
 import android.util.DisplayMetrics;
@@ -136,6 +137,8 @@ class SampleControlSmartWatch extends ControlExtension {
 	boolean tRunning = false;
 
 	Thread t = new Thread();
+	
+	 public TCPClient mTcpClient;
 
 	/**
 	 * Create sample control.
@@ -218,13 +221,47 @@ class SampleControlSmartWatch extends ControlExtension {
 			Log.d("Singleton", "XYZY: gfdhf");
 		}
 		
-		getFingerStream();
+		// connect to the server
+        new connectTask().execute("");
 	}
 
 	private void getFingerStream() {
 		// TODO Auto-generated method stub
 		
 	}
+	
+	public class connectTask extends AsyncTask<String,String,TCPClient> {
+
+        @Override
+        protected TCPClient doInBackground(String... message) {
+
+            //we create a TCPClient object and
+            mTcpClient = new TCPClient(new TCPClient.OnMessageReceived() {
+                @Override
+                //here the messageReceived method is implemented
+                public void messageReceived(String message) {
+                    //this method calls the onProgressUpdate
+                    publishProgress(message);
+                }
+            });
+            mTcpClient.run();
+
+            return null;
+        }
+
+        @Override
+        protected void onProgressUpdate(String... values) {
+            super.onProgressUpdate(values);
+
+            //in the arrayList we add the messaged received from server
+            //arrayList.add(values[0]);
+            // notify the adapter that the data set has changed. This means that new message received
+            // from server was added to the list
+           // mAdapter.notifyDataSetChanged();
+            Dbg.d("KEYBD: process ");
+			Log.d("KEYBD", "MSG: "+values[0]);
+        }
+    }
 
 	@Override
 	public void onStop() {
