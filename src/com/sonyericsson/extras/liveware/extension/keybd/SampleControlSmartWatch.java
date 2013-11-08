@@ -139,6 +139,8 @@ class SampleControlSmartWatch extends ControlExtension {
 	Thread t = new Thread();
 	
 	 public TCPClient mTcpClient;
+	 
+	 connectTask tsk;
 
 	/**
 	 * Create sample control.
@@ -197,7 +199,7 @@ class SampleControlSmartWatch extends ControlExtension {
 		Log.d(SampleExtensionService.LOG_TAG, "SampleControlSmartWatch onDestroy");
 		//stopAnimation();
 		mHandler = null;
-
+		tsk.cancel(true);
 		// Stop sensor
 		if (mSensor != null) {
 			mSensor.unregisterListener();
@@ -222,7 +224,9 @@ class SampleControlSmartWatch extends ControlExtension {
 		}
 		
 		// connect to the server
-        new connectTask().execute("");
+        //new connectTask().execute("");
+		tsk = new connectTask();
+		tsk.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 	}
 
 	private void getFingerStream() {
@@ -242,6 +246,8 @@ class SampleControlSmartWatch extends ControlExtension {
                 public void messageReceived(String message) {
                     //this method calls the onProgressUpdate
                     publishProgress(message);
+                    Dbg.d("KEYBD: process ");
+        			Log.d("KEYBD", "1MSG: "+message);
                 }
             });
             mTcpClient.run();
@@ -545,6 +551,7 @@ class SampleControlSmartWatch extends ControlExtension {
 		else if (event.getAction() == Control.Intents.TOUCH_ACTION_RELEASE) {
 			int tileReleaseIndex = getTileIndex(event);
 
+			Log.d("Keybd", "Touch Time: "+event.getTimeStamp());
 			if(tileReleaseIndex == -1)
 				return;
 			char[] ls = "0ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
