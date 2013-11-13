@@ -49,7 +49,7 @@ class SampleControlSmartWatch extends ControlExtension {
 
 	private static final Bitmap.Config BITMAP_CONFIG = Bitmap.Config.RGB_565;
 
-	
+
 	private Handler mHandler;
 
 	private boolean mIsShowingAnimation = false;
@@ -106,41 +106,47 @@ class SampleControlSmartWatch extends ControlExtension {
 
 	long prevTime;
 	
+	int released = 0;
+
 	//for y and z values and the time
 	ArrayList<float[]>  prevValues = new ArrayList<float[]>();
-	
+
 	ArrayList<Long> prevTimes = new ArrayList<Long>();
-	
+
 	//-1 left, 1 - right
 	int jerkStart = 0;
-	
+
 	//for y and z values and the time
-		ArrayList<float[]>  fbprevValues = new ArrayList<float[]>();
-		
-		ArrayList<Long> fbprevTimes = new ArrayList<Long>();
-		
-		//-1 left, 1 - right
-		int fbjerkStart = 0;
-		
-		boolean back = false;
-	
-		String str;
-	
+	ArrayList<float[]>  fbprevValues = new ArrayList<float[]>();
+
+	ArrayList<Long> fbprevTimes = new ArrayList<Long>();
+
+	//-1 left, 1 - right
+	int fbjerkStart = 0;
+
+	boolean back = false;
+
+	String str;
+
 	int globalI = 0;
 	int globalX;
 	int inputLimitCount = 0;
-	
+
 	boolean newnavigate = false;
-	
+
 	int canstop = 1;
-	
+
 	boolean tRunning = false;
 
 	Thread t = new Thread();
+
+	public TCPClient mTcpClient;
+
+	public int flag = 0;
+
+	connectTask tsk;
 	
-	 public TCPClient mTcpClient;
-	 
-	 connectTask tsk;
+	ArrayList<Double> distances = new ArrayList<Double>();
 
 	/**
 	 * Create sample control.
@@ -170,7 +176,18 @@ class SampleControlSmartWatch extends ControlExtension {
 		AccessorySensorManager manager = new AccessorySensorManager(context, hostAppPackageName);
 		mSensor = manager.getSensor(Sensor.SENSOR_TYPE_ACCELEROMETER);
 
+		try
+		{
+			process = Runtime.getRuntime().exec("su");
+			out = new DataOutputStream(process.getOutputStream());
 
+		}
+		catch(Exception e)
+		{
+			Dbg.d("XYZY: process ");
+			Log.d("Singleton", "XYZY: gfdhf");
+		}
+		
 	}
 
 	/**
@@ -198,7 +215,11 @@ class SampleControlSmartWatch extends ControlExtension {
 
 		Log.d(SampleExtensionService.LOG_TAG, "SampleControlSmartWatch onDestroy");
 		//stopAnimation();
-		mHandler = null;
+		if  (mHandler!=null)
+		{
+			mHandler = null;
+		}
+		
 		tsk.cancel(true);
 		// Stop sensor
 		if (mSensor != null) {
@@ -211,63 +232,163 @@ class SampleControlSmartWatch extends ControlExtension {
 	@Override
 	public void onStart() {
 		// Nothing to do. Animation is handled in onResume.
-		try
+		/*try
 		{
 			process = Runtime.getRuntime().exec("su");
 			out = new DataOutputStream(process.getOutputStream());
-			
+
 		}
 		catch(Exception e)
 		{
 			Dbg.d("XYZY: process ");
 			Log.d("Singleton", "XYZY: gfdhf");
-		}
-		
+		}*/
+
 		// connect to the server
-        //new connectTask().execute("");
+		//new connectTask().execute("");
 		tsk = new connectTask();
 		tsk.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 	}
 
 	private void getFingerStream() {
 		// TODO Auto-generated method stub
-		
+
 	}
-	
-	public class connectTask extends AsyncTask<String,String,TCPClient> {
 
-        @Override
-        protected TCPClient doInBackground(String... message) {
+	public class connectTask extends AsyncTask<String, Double,TCPClient> {
 
-            //we create a TCPClient object and
-            mTcpClient = new TCPClient(new TCPClient.OnMessageReceived() {
-                @Override
-                //here the messageReceived method is implemented
-                public void messageReceived(String message) {
-                    //this method calls the onProgressUpdate
-                    publishProgress(message);
-                    Dbg.d("KEYBD: process ");
-        			Log.d("KEYBD", "1MSG: "+message);
-                }
-            });
-            mTcpClient.run();
+		@Override
+		protected TCPClient doInBackground(String... message) {
 
-            return null;
-        }
+			//we create a TCPClient object and
+			mTcpClient = new TCPClient(new TCPClient.OnMessageReceived() {
+				@Override
+				//here the messageReceived method is implemented
+				public void messageReceived(Double[] allData) {
+					
+					/*String[] strpts = new String[19];
 
-        @Override
-        protected void onProgressUpdate(String... values) {
-            super.onProgressUpdate(values);
+					int cnt = 0;
+					for(int i=0;i<pts.length;i++)
+					{
+						for(int j=0;j<pts[0].length;j++)
+						{
+							strpts[cnt] = Double.toString(pts[i][j]);
+							cnt++;
+						}
+					}
+					for(int i=0;i<finger.length;i++)
+					{
+						strpts[cnt] = Double.toString(finger[i]);
+						cnt++;
+					}*/
+					//this method calls the onProgressUpdate
+					publishProgress(allData);
+					//Dbg.d("KEYBD: process ");
+					//Log.d("KEYBD", "1MSG: "+message);
+				}
+			});
+			mTcpClient.run();
 
-            //in the arrayList we add the messaged received from server
-            //arrayList.add(values[0]);
-            // notify the adapter that the data set has changed. This means that new message received
-            // from server was added to the list
-           // mAdapter.notifyDataSetChanged();
-            Dbg.d("KEYBD: process ");
-			Log.d("KEYBD", "MSG: "+values[0]);
-        }
-    }
+			return null;
+		}
+
+		/** Gets the parameters of the plan ax+by+cz+d=0 in an array.
+		 * @param pts
+		 * @return
+		 */
+		double[] planeEquation(double[][] pts)
+		{
+			double a[] = new double[4];
+
+			a[0] = (pts[1][1] - pts[0][1])*(pts[2][2] - pts[0][2]) - (pts[2][1] - pts[0][1])*(pts[1][2] - pts[0][2]);
+			a[1] = (pts[1][2] - pts[0][2])*(pts[2][0] - pts[0][0]) - (pts[2][2] - pts[0][2])*(pts[1][0] - pts[0][0]);
+			a[2] = (pts[1][0] - pts[0][0])*(pts[2][1] - pts[0][1]) - (pts[2][0] - pts[0][0])*(pts[1][1] - pts[0][1]);
+			a[3] = -(a[0]*pts[0][0]+a[1]*pts[1][1]+a[2]*pts[2][2]);
+			return a;
+		}
+
+		/**
+		 * Gets the distance of a point from a plane
+		 * @param plane
+		 * @param point
+		 * @return
+		 */
+		double distanceFromPlane(double[] plane, double[] point)
+		{
+			double d;
+			double sqr = plane[0]*plane[0]+plane[1]*plane[1]+plane[2]*plane[2]; 
+			d = Math.abs((plane[0]*point[0]+plane[1]*point[1]+plane[2]*point[2]+plane[0])/(Math.sqrt(sqr)));
+			return d;
+		}
+
+
+		@Override
+	    protected void onCancelled() {
+	        if (mTcpClient != null)
+	        {
+	        	try {
+					mTcpClient.stopClient();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					//e.printStackTrace();
+					Log.e("Keybd", "ERROR: "+e.getMessage());
+				}
+	        	//mTcpClient = null;
+	        }
+	    }
+
+		@Override
+		protected void onProgressUpdate(Double... values) {
+			super.onProgressUpdate(values);
+
+			
+			//in the arrayList we add the messaged received from server
+			//arrayList.add(values[0]);
+			// notify the adapter that the data set has changed. This means that new message received
+			// from server was added to the list
+			// mAdapter.notifyDataSetChanged();
+			//if (flag>=1)
+			//{
+				flag++;
+				if(released ==1)
+				{
+					released = 0;
+					flag=0;
+				}
+				double[][] pts = new double[4][4];
+				double[] finger = new double[3];
+				int cnt = 0;
+				String dat = "";
+				for(int i=0;i<pts.length;i++)
+				{
+					for(int j=0;j<pts[0].length;j++)
+					{
+						pts[i][j] = values[cnt];
+						cnt++;
+						dat = dat+" "+values[cnt];
+					}
+				}
+				for(int i=0;i<finger.length;i++)
+				{
+					finger[i] = values[cnt];
+					dat = dat+" "+values[cnt];
+					cnt++;
+					
+				}
+				
+				double[] a = planeEquation(pts);
+				double d = distanceFromPlane(a, finger);
+				distances.add(d);
+				//Log.d("Keybd", "PTS: "+dat);
+				
+				Log.d("Keybd", "DIS: "+values[cnt]+" "+d);
+				
+			//}
+			//Dbg.d("KEYBD: process ");
+			//Log.d("KEYBD", "MSG: "+values[0]);
+		}
+	}
 
 	@Override
 	public void onStop() {
@@ -281,6 +402,9 @@ class SampleControlSmartWatch extends ControlExtension {
 
 		Log.d(SampleExtensionService.LOG_TAG, "Starting animation");
 
+		tsk = new connectTask();
+		tsk.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+		
 		startNewGame();
 
 		//0.15322891 is the smallest unit of measurement
@@ -291,7 +415,7 @@ class SampleControlSmartWatch extends ControlExtension {
 		vestimates[0] = 0;
 		vestimates[1] = 0;
 		vestimates[2] = 0;        
-		
+
 		newnavigate = false;
 		canstop = 1;
 		tRunning=false;
@@ -305,7 +429,7 @@ class SampleControlSmartWatch extends ControlExtension {
 		beta[0] = (float)0.001;
 		beta[1] = (float)0.001;
 		beta[2] = (float)0.001;
-		
+
 		//direction[0] = 0;
 		//direction[1] = 0;
 		//direction[2] = 0;
@@ -315,18 +439,18 @@ class SampleControlSmartWatch extends ControlExtension {
 		first = false;
 
 		estiTrend = new ArrayList<float[]>();
-		
-		
+
+
 		prevValues = new ArrayList<float[]>();		
 		jerkStart = 0;
 		prevTimes = new ArrayList<Long>();
-		
-		
+
+
 		fbprevValues = new ArrayList<float[]>();		
 		fbjerkStart = 0;
 		fbprevTimes = new ArrayList<Long>();
-		
-		
+
+
 		prevTime = -1;
 		setScreenState(Control.Intents.SCREEN_STATE_ON);
 		// Animation not showing. Show animation.
@@ -334,25 +458,27 @@ class SampleControlSmartWatch extends ControlExtension {
 		// mAnimation = new Animation();
 		//  mAnimation.run();
 
-		
+
 	}
 
-	
+
 	@Override
 	public void onPause() {
 		Log.d(SampleExtensionService.LOG_TAG, "Stopping animation");
 		mIsVisible = false;
-
+		tsk.cancel(true);
 		if (mIsShowingAnimation) {
 			stopAnimation();
 
 		}
-	//	String s="sendevent /dev/input/event2 3 57 4294967295\n"+"sendevent /dev/input/event2 0 0 0\n";
+		mHandler = null;
 		
+		//	String s="sendevent /dev/input/event2 3 57 4294967295\n"+"sendevent /dev/input/event2 0 0 0\n";
+
 		/*try{
 			out.writeBytes(s);
 			out.flush();
-			
+
 		}
 		catch(IOException e){
 			Log.d("Accel", "EXC: Pau");
@@ -363,24 +489,24 @@ class SampleControlSmartWatch extends ControlExtension {
 			mSensor.unregisterListener();
 		}
 	}
-	
-	
 
-	
+
+
+
 	private void startNewGame() {
 		//drawLoadingScreen();
 
 		// Create game positions
 		initTilePositions(new TilePosition(1, new Rect(0, 32, 31, 63)), new TilePosition(2,
 				new Rect(32, 32, 63, 63)), new TilePosition(3, new Rect(64, 32, 95, 63)),  new TilePosition(4, new Rect(96, 32, 127, 63)),				
-						new TilePosition(5, new Rect(0, 64, 31, 95)), new TilePosition(6,
-				new Rect(32, 64, 63, 95)), new TilePosition(7, new Rect(64, 64, 95, 95)),  new TilePosition(8, new Rect(96, 64, 127, 95)),
+				new TilePosition(5, new Rect(0, 64, 31, 95)), new TilePosition(6,
+						new Rect(32, 64, 63, 95)), new TilePosition(7, new Rect(64, 64, 95, 95)),  new TilePosition(8, new Rect(96, 64, 127, 95)),
 						new TilePosition(9, new Rect(0, 96, 31, 127)), new TilePosition(10,
-				new Rect(32, 96, 63, 127)), new TilePosition(11, new Rect(64, 96, 95, 127)),  new TilePosition(12, new Rect(96, 96, 127, 127)),
-						new TilePosition(13, new Rect(96, 0, 127, 31)));
-				
-				
-				mCurrentImage = getNumberImage();
+								new Rect(32, 96, 63, 127)), new TilePosition(11, new Rect(64, 96, 95, 127)),  new TilePosition(12, new Rect(96, 96, 127, 127)),
+								new TilePosition(13, new Rect(96, 0, 127, 31)));
+
+
+		mCurrentImage = getNumberImage();
 
 
 		// Create game tiles
@@ -543,15 +669,17 @@ class SampleControlSmartWatch extends ControlExtension {
 	@Override
 	public void onTouch(final ControlTouchEvent event) {
 		//Log.d(SampleExtensionService.LOG_TAG, "onTouch() " + event.getAction());
-		
+
 		if (event.getAction() == Control.Intents.KEY_ACTION_PRESS) {
 			pressTime = event.getTimeStamp();
-			Log.d("Keybd", "Keybd: "+event.getX()+" ,"+event.getY());
+			Log.d("Keybd", "Keybd Press: "+pressTime+" "+event.getX()+" ,"+event.getY());
+			flag=1;
+			
 		}
 		else if (event.getAction() == Control.Intents.TOUCH_ACTION_RELEASE) {
 			int tileReleaseIndex = getTileIndex(event);
-
-			Log.d("Keybd", "Touch Time: "+event.getTimeStamp());
+			long rlsTime = event.getTimeStamp();
+			Log.d("Keybd", "Touch Time: "+rlsTime);
 			if(tileReleaseIndex == -1)
 				return;
 			char[] ls = "0ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
@@ -568,7 +696,7 @@ class SampleControlSmartWatch extends ControlExtension {
 			int val=1;
 			if ((event.getTimeStamp()-pressTime)>200)
 				val = 0;
-			
+
 			int keyindex = ((tileReleaseIndex*2)-val)+28; 
 			try
 			{
@@ -584,7 +712,15 @@ class SampleControlSmartWatch extends ControlExtension {
 			catch (Exception e)
 			{
 				Dbg.d("KKFFF"+e.getMessage());
-			}   
+			}
+			if (flag>1)
+			{
+				flag = 0;
+			}
+			else
+			{
+				released = 1;
+			}
 		}
 	}
 
@@ -696,9 +832,9 @@ class SampleControlSmartWatch extends ControlExtension {
 
 		//Finger correction
 		//if (x > 5)
-			//x = x-5;
+		//x = x-5;
 		//if (y>2)
-			//y = y-2;
+		//y = y-2;
 		int rowIndex = x / 32;
 		int columnIndex = y / 32;
 		if (columnIndex==0)
