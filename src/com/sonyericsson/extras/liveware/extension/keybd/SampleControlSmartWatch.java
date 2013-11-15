@@ -31,6 +31,7 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.inputmethodservice.Keyboard.Key;
 import android.os.AsyncTask;
+import android.os.Debug;
 import android.os.Handler;
 import android.text.TextPaint;
 import android.util.DisplayMetrics;
@@ -105,7 +106,7 @@ class SampleControlSmartWatch extends ControlExtension {
 	boolean first = false;
 
 	long prevTime;
-	
+
 	int released = 0;
 
 	//for y and z values and the time
@@ -145,9 +146,17 @@ class SampleControlSmartWatch extends ControlExtension {
 	public int flag = 0;
 
 	connectTask tsk;
-	
+
 	ArrayList<Double> distances = new ArrayList<Double>();
 
+	boolean mRun = true;
+	
+	double[][] pts = new double[4][4];
+	double[] finger = new double[3];
+	
+	//char[] ls = "0ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+	char[] ls = {'0','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'};
+	
 	/**
 	 * Create sample control.
 	 *
@@ -187,7 +196,7 @@ class SampleControlSmartWatch extends ControlExtension {
 			Dbg.d("XYZY: process ");
 			Log.d("Singleton", "XYZY: gfdhf");
 		}
-		
+
 	}
 
 	/**
@@ -219,8 +228,10 @@ class SampleControlSmartWatch extends ControlExtension {
 		{
 			mHandler = null;
 		}
-		
+
 		tsk.cancel(true);
+		mRun = false;
+
 		// Stop sensor
 		if (mSensor != null) {
 			mSensor.unregisterListener();
@@ -246,8 +257,8 @@ class SampleControlSmartWatch extends ControlExtension {
 
 		// connect to the server
 		//new connectTask().execute("");
-		tsk = new connectTask();
-		tsk.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+		/*tsk = new connectTask();
+		tsk.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);*/
 	}
 
 	private void getFingerStream() {
@@ -265,7 +276,7 @@ class SampleControlSmartWatch extends ControlExtension {
 				@Override
 				//here the messageReceived method is implemented
 				public void messageReceived(Double[] allData) {
-					
+
 					/*String[] strpts = new String[19];
 
 					int cnt = 0;
@@ -290,6 +301,137 @@ class SampleControlSmartWatch extends ControlExtension {
 			});
 			mTcpClient.run();
 
+			try{
+
+				byte[] sendbytes = new byte[8];
+
+				sendbytes[0] = (byte)3;
+				for (int i = 1; i < 8; ++i)
+				{
+					sendbytes[i] = (byte)0;
+				}
+				mTcpClient.sendBytes(sendbytes);
+
+				int type, packet, count;
+				byte[] buffer=new byte[4];
+				byte[] buffer1= new byte[8];
+				Double[] allData = new Double[20];
+				String dat = "";
+				long currTime;
+				int dcnt;
+				double dd;
+				//DATA
+				while(mRun)				
+				{				
+					Log.d("Keybd", "Run");
+					//Debug.dumpHprofData(absPath);
+					//sendBytes(sendbytes);
+
+					//buffer = new byte[4];
+					//in = new DataInputStream(socket.getInputStream());
+					mTcpClient.in.read(buffer);
+					currTime = System.currentTimeMillis();
+
+					packet = mTcpClient.fromByteArray(buffer);
+
+					mTcpClient.in.read(buffer);
+					type = mTcpClient.fromByteArray(buffer);
+					//in.read(aa);
+					//System.out.println("Packet: "+packet);
+					//System.out.println("Type: "+type);
+
+					if (type != 1) {
+						//System.out.println("Type: "+type);
+						//System.out.println("Type Error ");
+					}
+
+					if (packet != 2){
+
+						//System.out.println("Packet Error ");
+					}
+
+					mTcpClient.in.read(buffer);
+					count = mTcpClient.fromByteArray(buffer);
+					//System.out.println("Count: "+count);
+					 
+					//double[][] pts = new double[4][4];
+					//double[] finger = new double[3];
+					//Double[] allData = new Double[20];
+					dcnt = 0;
+
+					for (int i = 0; i < count; ++i)
+					{
+						//if(i>=9)
+						//{
+
+					
+						//int cIndex = 0;
+						//buffer1 = new byte[8];            
+						mTcpClient.in.read(buffer1);
+						dd = mTcpClient.fromByteArraytoDouble(buffer1);
+						//String channel = new String(b, "UTF-8");
+
+						if (i>=9)
+						{
+							//System.out.print(" "+dd);	
+							//dat = dat+dd+" "; 
+							if(i>=9 && i<25)
+							{
+								//int q = (i-9)/4;
+								//pts[q][(i-9)%4] = dd;
+								allData[dcnt++] = Double.valueOf(dd);
+
+							}
+							else if(i>=33 && i<36)
+							{
+								//finger[(i-33)] = dd; 
+								allData[dcnt++] = Double.valueOf(dd);
+							}
+
+						}
+
+						//}				
+					}
+										
+					//allData[dcnt] = (double)currTime;
+					allData[dcnt]= Double.valueOf((double)currTime);
+					//Log.d("TCP", System.currentTimeMillis()+" "+dat);
+
+					mTcpClient.mMessageListener.messageReceived(allData);
+				}
+
+				sendbytes = new byte[8];
+
+				sendbytes[0] = (byte)4;
+				for (int i = 1; i < 8; ++i)
+				{
+					sendbytes[i] = (byte)0;
+				}
+				mTcpClient.sendBytes(sendbytes);
+
+				try
+				{
+					mTcpClient.in.close();
+					mTcpClient.socket.close();
+				}
+				catch (IOException e)
+				{
+					Log.e("Keybd", "T: Error", e);
+				}
+
+
+				//Log.e("RESPONSE FROM SERVER", "S: Received Message: '" + serverMessage + "'");
+				//Dbg.d("KEYBD1: "+serverMessage);
+
+			} catch (Exception e) {
+
+				Log.e("Keybd", "S: Error", e);
+				//System.out.println("Error "+ e.getStackTrace());
+
+			} finally {
+
+
+			}	
 			return null;
 		}
 
@@ -324,40 +466,39 @@ class SampleControlSmartWatch extends ControlExtension {
 
 
 		@Override
-	    protected void onCancelled() {
-	        if (mTcpClient != null)
-	        {
-	        	try {
+		protected void onCancelled() {
+			if (mTcpClient != null)
+			{
+				try {
 					mTcpClient.stopClient();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					//e.printStackTrace();
 					Log.e("Keybd", "ERROR: "+e.getMessage());
 				}
-	        	//mTcpClient = null;
-	        }
-	    }
+				//mTcpClient = null;
+			}
+		}
 
 		@Override
 		protected void onProgressUpdate(Double... values) {
 			super.onProgressUpdate(values);
 
-			
+
 			//in the arrayList we add the messaged received from server
 			//arrayList.add(values[0]);
 			// notify the adapter that the data set has changed. This means that new message received
 			// from server was added to the list
 			// mAdapter.notifyDataSetChanged();
-			//if (flag>=1)
-			//{
+			if (flag>=1)
+			{
 				flag++;
 				if(released ==1)
 				{
 					released = 0;
 					flag=0;
 				}
-				double[][] pts = new double[4][4];
-				double[] finger = new double[3];
+				
 				int cnt = 0;
 				String dat = "";
 				for(int i=0;i<pts.length;i++)
@@ -366,25 +507,24 @@ class SampleControlSmartWatch extends ControlExtension {
 					{
 						pts[i][j] = values[cnt];
 						cnt++;
-						dat = dat+" "+values[cnt];
+						//dat = dat+" "+values[cnt];
 					}
 				}
 				for(int i=0;i<finger.length;i++)
 				{
 					finger[i] = values[cnt];
-					dat = dat+" "+values[cnt];
+					//dat = dat+" "+values[cnt];
 					cnt++;
-					
+
 				}
 				
-				double[] a = planeEquation(pts);
-				double d = distanceFromPlane(a, finger);
-				distances.add(d);
+				double d = distanceFromPlane(planeEquation(pts), finger);
+				//distances.add(d);
 				//Log.d("Keybd", "PTS: "+dat);
-				
+
 				Log.d("Keybd", "DIS: "+values[cnt]+" "+d);
-				
-			//}
+
+			}
 			//Dbg.d("KEYBD: process ");
 			//Log.d("KEYBD", "MSG: "+values[0]);
 		}
@@ -402,9 +542,11 @@ class SampleControlSmartWatch extends ControlExtension {
 
 		Log.d(SampleExtensionService.LOG_TAG, "Starting animation");
 
+		//Part of vicon
 		tsk = new connectTask();
 		tsk.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-		
+		mRun = true;
+
 		startNewGame();
 
 		//0.15322891 is the smallest unit of measurement
@@ -467,12 +609,13 @@ class SampleControlSmartWatch extends ControlExtension {
 		Log.d(SampleExtensionService.LOG_TAG, "Stopping animation");
 		mIsVisible = false;
 		tsk.cancel(true);
+		mRun = false;
 		if (mIsShowingAnimation) {
 			stopAnimation();
 
 		}
 		mHandler = null;
-		
+
 		//	String s="sendevent /dev/input/event2 3 57 4294967295\n"+"sendevent /dev/input/event2 0 0 0\n";
 
 		/*try{
@@ -674,7 +817,7 @@ class SampleControlSmartWatch extends ControlExtension {
 			pressTime = event.getTimeStamp();
 			Log.d("Keybd", "Keybd Press: "+pressTime+" "+event.getX()+" ,"+event.getY());
 			flag=1;
-			
+
 		}
 		else if (event.getAction() == Control.Intents.TOUCH_ACTION_RELEASE) {
 			int tileReleaseIndex = getTileIndex(event);
@@ -682,7 +825,7 @@ class SampleControlSmartWatch extends ControlExtension {
 			Log.d("Keybd", "Touch Time: "+rlsTime);
 			if(tileReleaseIndex == -1)
 				return;
-			char[] ls = "0ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+			
 			String r = "";
 			while(true) {
 				r = ls[(tileReleaseIndex*2)-1] + r;
