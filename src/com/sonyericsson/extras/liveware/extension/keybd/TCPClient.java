@@ -4,17 +4,11 @@ import android.util.Log;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.SocketException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-
-import com.sonyericsson.extras.liveware.extension.util.Dbg;
 
 
 public class TCPClient {
 
-	private String serverMessage;
+	//private String serverMessage;
 	public static final String SERVERIP = "172.21.17.76"; //your computer IP address
 	public static final int SERVERPORT = 800;
 	public OnMessageReceived mMessageListener = null;
@@ -22,7 +16,8 @@ public class TCPClient {
 	
 	public Socket socket;
 	
-	
+	long bits = 0L;
+	int ints = 0;
 	public PrintWriter out;
 	public DataInputStream in;
 	public DataOutputStream dos;
@@ -80,12 +75,25 @@ public class TCPClient {
 	}
 
 	int fromByteArray(byte[] bytes) {		
-		return ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getInt();
+		//return ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getInt();
+		for (int i = 3; i >=0; i--) {
+			  //bits |= (bytes[i] & 0xFFL) << i;
+				ints = (ints << 8) + (bytes[i] & 0xff);
+			  // or the other way around, depending on endianness
+			}
+			return ints;
 	}
 
 	double fromByteArraytoDouble(byte[] bytes) {
 		
-		return ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getDouble();
+		//return ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getDouble();
+		
+		for (int i = 7; i >=0; i--) {
+		  //bits |= (bytes[i] & 0xFFL) << i;
+			bits = (bits << 8) + (bytes[i] & 0xff);
+		  // or the other way around, depending on endianness
+		}
+		return Double.longBitsToDouble(bits);
 	}
 
 	void getChannelInfo() throws IOException
@@ -114,20 +122,20 @@ public class TCPClient {
 		int count = fromByteArray(buffer);
 		System.out.println("Count: "+count);
 
-		int IndiciesToSkip = 1;
+		//int IndiciesToSkip = 1;
 		for (int i = 0; i < count; ++i)
 		{
 			int s;
 			byte[] b; 
 			//int cIndex = 0;
 
-			int iRx = in.read(buffer);
+			in.read(buffer);
 			s = fromByteArray(buffer);
 
 			b = new byte[s];
-			iRx = in.read(b);
+			in.read(b);
 
-			char[] c = new char[s];
+			//char[] c = new char[s];
 			/*System.Text.Decoder d = System.Text.Encoding.UTF8.GetDecoder();
 		    int charLen = d.GetChars(b, 0, s, c, 0);
 		    System.String szData = new System.String(c);
@@ -142,7 +150,7 @@ public class TCPClient {
                // IndiciesToSkip = vc.ChannelEntries;
                // viconArray.Add(vc);
             }*/
-			IndiciesToSkip--;
+			//IndiciesToSkip--;
 
 		}
 
@@ -187,7 +195,8 @@ public class TCPClient {
 				in = new DataInputStream(socket.getInputStream());
 				in.read(buffer);
 				packet = fromByteArray(buffer);
-
+				Log.d("Keybd", "P: "+packet);
+				
 				in.read(buffer);
 				type = fromByteArray(buffer);
 				//in.read(aa);
@@ -209,28 +218,28 @@ public class TCPClient {
 				//System.out.println("Count: "+count);
 
 
-				String[] channels = new String[count];
+				//String[] channels = new String[count];
 				//viconArray = new ArrayList();
-				int IndiciesToSkip = 1;
+				//int IndiciesToSkip = 1;
 				for (int i = 0; i < count; ++i)
 				{
 					int s;
 					byte[] b; 
 					//int cIndex = 0;
 
-					int iRx = in.read(buffer);
+					in.read(buffer);
 					s = fromByteArray(buffer);
 					//Log.d("Keybd", "Val: "+s);
 					b = new byte[s];
-					iRx = in.read(b);
+					in.read(b);
 					
-					char[] c = new char[s];
+					//char[] c = new char[s];
 
 
 					String channel = new String(b, "UTF-8");
 					//System.out.println("Channel: "+channel);
 					Log.d("Keybd", "Channel: "+channel);
-					IndiciesToSkip--;
+					//IndiciesToSkip--;
 				}
 
 				/*sendbytes = new byte[8];

@@ -14,32 +14,23 @@ import com.sonyericsson.extras.liveware.extension.util.Dbg;
 import com.sonyericsson.extras.liveware.extension.util.control.ControlExtension;
 import com.sonyericsson.extras.liveware.extension.util.control.ControlTouchEvent;
 import com.sonyericsson.extras.liveware.extension.util.sensor.AccessorySensor;
-import com.sonyericsson.extras.liveware.extension.util.sensor.AccessorySensorEvent;
-import com.sonyericsson.extras.liveware.extension.util.sensor.AccessorySensorEventListener;
-import com.sonyericsson.extras.liveware.extension.util.sensor.AccessorySensorException;
 import com.sonyericsson.extras.liveware.extension.util.sensor.AccessorySensorManager;
-import com.sonyericsson.extras.liveware.extension.util.sensor.AccessorySensorType;
 
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
-import android.inputmethodservice.Keyboard.Key;
+
 import android.os.AsyncTask;
-import android.os.Debug;
+
 import android.os.Handler;
 import android.text.TextPaint;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.ViewGroup.LayoutParams;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 /**
  * The sample control for SmartWatch handles the control on the accessory.
@@ -63,7 +54,7 @@ class SampleControlSmartWatch extends ControlExtension {
 
 	private final int height;
 
-	private Bitmap mCurrentImage = null;
+	//private Bitmap mCurrentImage = null;
 
 	private static final int NUMBER_TILE_TEXT_SIZE = 14;
 
@@ -151,8 +142,12 @@ class SampleControlSmartWatch extends ControlExtension {
 
 	boolean mRun = true;
 	
-	double[][] pts = new double[4][4];
+	String dbl;
+	
+	double[][] pts = new double[3][4];
 	double[] finger = new double[3];
+	double[] aa = new double[4];
+	double dist=0, sqr=0, di=0;
 	
 	//char[] ls = "0ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 	char[] ls = {'0','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'};
@@ -261,10 +256,10 @@ class SampleControlSmartWatch extends ControlExtension {
 		tsk.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);*/
 	}
 
-	private void getFingerStream() {
+	/*private void getFingerStream() {
 		// TODO Auto-generated method stub
 
-	}
+	}*/
 
 	public class connectTask extends AsyncTask<String, Double,TCPClient> {
 
@@ -300,7 +295,9 @@ class SampleControlSmartWatch extends ControlExtension {
 				}
 			});
 			mTcpClient.run();
-
+			
+			//return null;
+			
 			try{
 
 				byte[] sendbytes = new byte[8];
@@ -323,7 +320,7 @@ class SampleControlSmartWatch extends ControlExtension {
 				//DATA
 				while(mRun)				
 				{				
-					Log.d("Keybd", "Run");
+					//Log.d("Keybd", "Run");
 					//Debug.dumpHprofData(absPath);
 					//sendBytes(sendbytes);
 
@@ -333,7 +330,7 @@ class SampleControlSmartWatch extends ControlExtension {
 					currTime = System.currentTimeMillis();
 
 					packet = mTcpClient.fromByteArray(buffer);
-
+					//Log.d("Keybd", "P: "+packet);
 					mTcpClient.in.read(buffer);
 					type = mTcpClient.fromByteArray(buffer);
 					//in.read(aa);
@@ -374,15 +371,20 @@ class SampleControlSmartWatch extends ControlExtension {
 						if (i>=9)
 						{
 							//System.out.print(" "+dd);	
-							//dat = dat+dd+" "; 
-							if(i>=9 && i<25)
+							dat = dat+dd+" ";
+							//watch marker values
+							if(i>=9 && i<21)
 							{
 								//int q = (i-9)/4;
 								//pts[q][(i-9)%4] = dd;
 								allData[dcnt++] = Double.valueOf(dd);
-
-							}
-							else if(i>=33 && i<36)
+								if (i==9)
+								{
+									//dbl = Double.toString(dd);
+									//Log.d("Keybd", dbl);
+								}
+							}//finger marker values
+							else if(i>=29 && i<32)
 							{
 								//finger[(i-33)] = dd; 
 								allData[dcnt++] = Double.valueOf(dd);
@@ -395,7 +397,7 @@ class SampleControlSmartWatch extends ControlExtension {
 										
 					//allData[dcnt] = (double)currTime;
 					allData[dcnt]= Double.valueOf((double)currTime);
-					//Log.d("TCP", System.currentTimeMillis()+" "+dat);
+					Log.d("TCP", System.currentTimeMillis()+" "+dat);
 
 					mTcpClient.mMessageListener.messageReceived(allData);
 				}
@@ -441,13 +443,18 @@ class SampleControlSmartWatch extends ControlExtension {
 		 */
 		double[] planeEquation(double[][] pts)
 		{
-			double a[] = new double[4];
-
-			a[0] = (pts[1][1] - pts[0][1])*(pts[2][2] - pts[0][2]) - (pts[2][1] - pts[0][1])*(pts[1][2] - pts[0][2]);
-			a[1] = (pts[1][2] - pts[0][2])*(pts[2][0] - pts[0][0]) - (pts[2][2] - pts[0][2])*(pts[1][0] - pts[0][0]);
-			a[2] = (pts[1][0] - pts[0][0])*(pts[2][1] - pts[0][1]) - (pts[2][0] - pts[0][0])*(pts[1][1] - pts[0][1]);
-			a[3] = -(a[0]*pts[0][0]+a[1]*pts[1][1]+a[2]*pts[2][2]);
-			return a;
+			//Making all the points at the same initial z-level
+			//Assuming the situation where mid marker on watch is marker 1, left marker is marker 2 and right marker is marker 3. 
+			
+			pts[1][2] = pts[1][2]-11.84924;
+			pts[2][2] = pts[2][2]-20.2912;
+			
+			aa[0] = (pts[1][1] - pts[0][1])*(pts[2][2] - pts[0][2]) - (pts[2][1] - pts[0][1])*(pts[1][2] - pts[0][2]);
+			aa[1] = (pts[1][2] - pts[0][2])*(pts[2][0] - pts[0][0]) - (pts[2][2] - pts[0][2])*(pts[1][0] - pts[0][0]);
+			aa[2] = (pts[1][0] - pts[0][0])*(pts[2][1] - pts[0][1]) - (pts[2][0] - pts[0][0])*(pts[1][1] - pts[0][1]);
+			aa[3] = -(aa[0]*pts[0][0]+aa[1]*pts[1][1]+aa[2]*pts[2][2]);
+			
+			return aa;
 		}
 
 		/**
@@ -458,10 +465,11 @@ class SampleControlSmartWatch extends ControlExtension {
 		 */
 		double distanceFromPlane(double[] plane, double[] point)
 		{
-			double d;
-			double sqr = plane[0]*plane[0]+plane[1]*plane[1]+plane[2]*plane[2]; 
-			d = Math.abs((plane[0]*point[0]+plane[1]*point[1]+plane[2]*point[2]+plane[0])/(Math.sqrt(sqr)));
-			return d;
+			
+			sqr = plane[0]*plane[0]+plane[1]*plane[1]+plane[2]*plane[2]; 
+			//dist = Math.abs((plane[0]*point[0]+plane[1]*point[1]+plane[2]*point[2]+plane[0])/(Math.sqrt(sqr)));
+			dist = (plane[0]*point[0]+plane[1]*point[1]+plane[2]*point[2]+plane[3])/(Math.sqrt(sqr));
+			return dist;
 		}
 
 
@@ -490,8 +498,9 @@ class SampleControlSmartWatch extends ControlExtension {
 			// notify the adapter that the data set has changed. This means that new message received
 			// from server was added to the list
 			// mAdapter.notifyDataSetChanged();
-			if (flag>=1)
-			{
+			
+			//if (flag>=1)
+			//{
 				flag++;
 				if(released ==1)
 				{
@@ -500,7 +509,7 @@ class SampleControlSmartWatch extends ControlExtension {
 				}
 				
 				int cnt = 0;
-				String dat = "";
+				//String dat = "";
 				for(int i=0;i<pts.length;i++)
 				{
 					for(int j=0;j<pts[0].length;j++)
@@ -518,13 +527,13 @@ class SampleControlSmartWatch extends ControlExtension {
 
 				}
 				
-				double d = distanceFromPlane(planeEquation(pts), finger);
+				di = distanceFromPlane(planeEquation(pts), finger);
 				//distances.add(d);
 				//Log.d("Keybd", "PTS: "+dat);
 
-				Log.d("Keybd", "DIS: "+values[cnt]+" "+d);
+				Log.d("Keybd", "DIS: "+values[cnt]+" "+di);
 
-			}
+			//}
 			//Dbg.d("KEYBD: process ");
 			//Log.d("KEYBD", "MSG: "+values[0]);
 		}
@@ -634,8 +643,6 @@ class SampleControlSmartWatch extends ControlExtension {
 	}
 
 
-
-
 	private void startNewGame() {
 		//drawLoadingScreen();
 
@@ -649,13 +656,11 @@ class SampleControlSmartWatch extends ControlExtension {
 								new TilePosition(13, new Rect(96, 0, 127, 31)));
 
 
-		mCurrentImage = getNumberImage();
+		getNumberImage();
 
 
 		// Create game tiles
 		initTiles();
-
-
 
 		// Draw initial game Bitmap
 		getCurrentImage(true);
