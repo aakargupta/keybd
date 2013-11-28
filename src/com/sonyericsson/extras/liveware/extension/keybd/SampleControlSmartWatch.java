@@ -3,7 +3,7 @@ package com.sonyericsson.extras.liveware.extension.keybd;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InterruptedIOException;
+
 import java.util.ArrayList;
 
 import com.sonyericsson.extras.liveware.aef.control.Control;
@@ -146,6 +146,7 @@ class SampleControlSmartWatch extends ControlExtension {
 	
 	double[][] pts = new double[3][4];
 	double[] finger = new double[3];
+	double[] fobject = new double[3];
 	double[] aa = new double[4];
 	double dist=0, sqr=0, di=0;
 	
@@ -313,7 +314,7 @@ class SampleControlSmartWatch extends ControlExtension {
 				byte[] buffer=new byte[4];
 				byte[] buffer1= new byte[8];
 				Double[] allData = new Double[20];
-				String dat = "";
+				//String dat = "";
 				long currTime;
 				int dcnt;
 				double dd;
@@ -371,7 +372,7 @@ class SampleControlSmartWatch extends ControlExtension {
 						if (i>=9)
 						{
 							//System.out.print(" "+dd);	
-							dat = dat+dd+" ";
+							//dat = dat+dd+" ";
 							//watch marker values
 							if(i>=9 && i<21)
 							{
@@ -388,6 +389,10 @@ class SampleControlSmartWatch extends ControlExtension {
 							{
 								//finger[(i-33)] = dd; 
 								allData[dcnt++] = Double.valueOf(dd);
+							}//finger object values
+							else if(i>=42 && i<45)
+							{
+								allData[dcnt++] = Double.valueOf(dd);
 							}
 
 						}
@@ -397,7 +402,7 @@ class SampleControlSmartWatch extends ControlExtension {
 										
 					//allData[dcnt] = (double)currTime;
 					allData[dcnt]= Double.valueOf((double)currTime);
-					Log.d("TCP", System.currentTimeMillis()+" "+dat);
+					//Log.d("TCP", System.currentTimeMillis()+" "+dat);
 
 					mTcpClient.mMessageListener.messageReceived(allData);
 				}
@@ -446,13 +451,20 @@ class SampleControlSmartWatch extends ControlExtension {
 			//Making all the points at the same initial z-level
 			//Assuming the situation where mid marker on watch is marker 1, left marker is marker 2 and right marker is marker 3. 
 			
-			pts[1][2] = pts[1][2]-11.84924;
-			pts[2][2] = pts[2][2]-20.2912;
+			//pts[1][2] = pts[1][2]-12.36326;
+			//pts[2][2] = pts[2][2]-20.61238;
+			
+			pts[1][2] = pts[1][2]-11.7;
+			pts[2][2] = pts[2][2]-1.4;
 			
 			aa[0] = (pts[1][1] - pts[0][1])*(pts[2][2] - pts[0][2]) - (pts[2][1] - pts[0][1])*(pts[1][2] - pts[0][2]);
 			aa[1] = (pts[1][2] - pts[0][2])*(pts[2][0] - pts[0][0]) - (pts[2][2] - pts[0][2])*(pts[1][0] - pts[0][0]);
 			aa[2] = (pts[1][0] - pts[0][0])*(pts[2][1] - pts[0][1]) - (pts[2][0] - pts[0][0])*(pts[1][1] - pts[0][1]);
 			aa[3] = -(aa[0]*pts[0][0]+aa[1]*pts[1][1]+aa[2]*pts[2][2]);
+			
+			//Calculating the watch area location
+			//pts[1][1]
+			//pts[2][0]
 			
 			return aa;
 		}
@@ -524,15 +536,21 @@ class SampleControlSmartWatch extends ControlExtension {
 					finger[i] = values[cnt];
 					//dat = dat+" "+values[cnt];
 					cnt++;
-
+				}
+				for(int i=0;i<fobject.length;i++)
+				{
+					fobject[i] = values[cnt];
+					//dat = dat+" "+values[cnt];
+					cnt++;
 				}
 				
 				di = distanceFromPlane(planeEquation(pts), finger);
 				//distances.add(d);
 				//Log.d("Keybd", "PTS: "+dat);
 
-				Log.d("Keybd", "DIS: "+values[cnt]+" "+di);
-
+				Log.d("Keybd", "DIS: "+values[cnt]+" "+di+" "+distanceFromPlane(planeEquation(pts), fobject));
+				Log.d("TCP", pts[2][0]+" "+pts[1][1]+" "+finger[0]+" "+finger[1]);
+				
 			//}
 			//Dbg.d("KEYBD: process ");
 			//Log.d("KEYBD", "MSG: "+values[0]);
